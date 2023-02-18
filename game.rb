@@ -22,11 +22,7 @@ def codeMaker
     codes.sample(4)
 end
 def instruct
-    colors = ['red','blue','green','yellow','white','purple']
-    colors.each do |color|
-        puts "#{color.chr} stands for #{color}"
-    end
-    puts "What is your choice? "
+    puts "From 1 to 6, What is your choice? "
 end
 def gameForHuman
     count = 0
@@ -113,7 +109,7 @@ def gameForComputer
             puts "round: #{count}"
             puts "The computer won!"
             break
-        elsif !winCondition && count == 12
+        elsif !winCondition && count == 10
             print "The computer lost! This is your code: " 
             p code
         else
