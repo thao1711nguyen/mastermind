@@ -1,10 +1,4 @@
-#make a function generate random code of 4 colors from 6 colors: 
-    #1: red -> r
-    #2: blue -> b
-    #3: green -> g
-    #4: yellow -> y
-    #5: white -> w
-    #6: purple -> p
+
 #function game
     #initialize a count variable equals 0
     #WHILE count is less than or equal to 12
@@ -23,7 +17,7 @@
             #display hints
 
 def codeMaker
-    codes = ['r','b','g','y','w','p']
+    codes = [1,2,3,4,5,6]
     codes += codes
     codes.sample(4)
 end
@@ -32,17 +26,16 @@ def instruct
     colors.each do |color|
         puts "#{color.chr} stands for #{color}"
     end
-    puts "What is your guess? "
+    puts "What is your choice? "
 end
-def game
+def gameForHuman
     count = 0
     codes = codeMaker
-    hash_codes = transform(codes)
+    
     while count <= 12
         instruct
-        userGuess = gets.chomp.split(',')
-        userGuess = transform(userGuess)
-        match_result = match(hash_codes, userGuess)
+        userGuess = gets.chomp.gsub(/\s+/,'').split('').map(&:to_i)
+        match_result = match(codes, userGuess)
         winCondition = match_result.length == 4 && match_result.all?(1) 
         if winCondition
             puts 'You win! Congratulation!'
@@ -60,8 +53,11 @@ def game
     end
 end
 def match(codes,userGuess)
+    codes = transform(codes) #transform into a hash
+    userGuess = transform(userGuess)
+    
     result = []
-    match_test = lambda { |standard, toBeCompared, result| standard.each_with_index do |position|
+    match_test = lambda { |standard, toBeCompared, result| standard.each do |position|
                             if toBeCompared.include?(position) 
                                 result.push(1)
                             else 
@@ -87,4 +83,107 @@ def transform(colors)
     colorsAndPositions
 end
 
+def game
+    puts "You wanna be codemaker (m) or codebreaker (b)?"
+    choice = gets.chomp 
+    if choice == 'm'
+        gameForComputer
+    else 
+        gameForHuman
+    end
+end
+def gameForComputer
+    instruct
+    code = gets.chomp.split('').map(&:to_i)
+    count = 0 
+    allCodes = generateCodes #Step1: generate 6**4 codewords
+    while count <=10
+        count += 1
+        print "My guess is: " 
+        if count == 1 
+            guess = [1,1,2,2] 
+        end
+        puts guess.join('  ')
+        puts 'Please give me a hint: '
+        #hints = gets.chomp.gsub(/\s+/,'').split('').map(&:to_i)
+        hints = match(code,guess)
+        puts hints.join('  ')
+        winCondition = hints.count(1) == 4
+        if winCondition
+            puts "round: #{count}"
+            puts "The computer won!"
+            break
+        elsif !winCondition && count == 12
+            print "The computer lost! This is your code: " 
+            p code
+        else
+            allCodes.delete(guess) #remove last guess from the possible guesses
+            if count == 1 
+                potentialCodes = allCodes.dup #shallo copy allCodes to potentialCodes
+            end
+            potentialCodes.delete(guess)
+            #compare potentialCodes with last guess, if it gives the same hint, keep it
+            potentialCodes = generatePotentialCodes(potentialCodes,hints,guess)
+
+            guess = generateGuess(potentialCodes,allCodes) 
+            puts "This is round #{count}"
+            print "potentialCodes.length is: "
+            puts potentialCodes.length
+            puts potentialCodes.include?(code)
+        end
+    end
+    
+end
+def generateCodes
+    allCodes = []
+    [1,2,3,4,5,6].repeated_permutation(4) do |permutation|
+        allCodes.push(permutation)
+    end
+    allCodes
+end
+def generatePotentialCodes(potentialCodes, hints, guess)
+    potentialCodes.each do |code|
+       assummedResult = match(code,guess) 
+       acceptCondition = assummedResult.count(1) == hints.count(1) \
+                        && assummedResult.count(0) == hints.count(0)
+        if !acceptCondition
+            potentialCodes.delete(code)
+        end
+    end
+    potentialCodes
+end
+def generateGuess(potentialCodes, allCodes)
+    #binding.pry
+    maxScores = {}
+    allCodes.each do |guess|
+        scores_by_guess = Hash.new(0)
+        potentialCodes.each do |potentialCode| #assume each code in potentialCodes is the secret code
+                                                #compare secret code with each guess in allCodes -> score
+                                                #keep track of the number of score for each guess
+            assummedResult = match(potentialCode,guess)
+            numberOf1 = assummedResult.count(1)
+            numberOf0 = assummedResult.count(0) 
+            scores_by_guess[[numberOf1,numberOf0]] += 1
+        end 
+        maxScores[guess] = scores_by_guess.values.max #select the highest score of each guess and push it to the array
+    end
+    minMax = maxScores.values.min
+    finalGuess = nil
+    if maxScores.values.count(minMax) > 1 #check whether there are multiple minmax values
+        minMaxScores = maxScores.select {|code, score| score == minMax}  #if so, pull them out
+        guesses = minMaxScores.keys.sort #sort by numerical order
+        guesses.each do |guess| #choose the one that in potentialCodes or the first one
+            if potentialCodes.include?(guess)
+                finalGuess = guess
+                break
+            else 
+                finalGuess = guesses[0]
+            end
+        end
+    else  
+        finalGuess = maxScores.key(minMax)
+    end
+    finalGuess
+end
 game
+
