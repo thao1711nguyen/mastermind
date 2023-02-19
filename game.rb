@@ -97,12 +97,15 @@ def gameForComputer
         count += 1
         print "My guess is: " 
         if count == 1 
+            potentialCodes = allCodes.dup 
+            potentialGuessesAndScores = generatePotentialGuessesAndScores(allCodes, potentialCodes)
             guess = [1,1,2,2] 
         end
         puts guess.join('  ')
         puts 'Please give me a hint: '
         #hints = gets.chomp.gsub(/\s+/,'').split('').map(&:to_i)
         hints = match(code,guess)
+        hintsScore = [hints.count(1), hints.count(0)]
         puts hints.join('  ')
         winCondition = hints.count(1) == 4
         if winCondition
@@ -114,14 +117,9 @@ def gameForComputer
             p code
         else
             allCodes.delete(guess) #remove last guess from the possible guesses
-            if count == 1 
-                potentialCodes = allCodes.dup #shallo copy allCodes to potentialCodes
-            end
-            potentialCodes.delete(guess)
-            #compare potentialCodes with last guess, if it gives the same hint, keep it
-            potentialCodes = generatePotentialCodes(potentialCodes,hints,guess)
-
-            guess = generateGuess(potentialCodes,allCodes) 
+            potentialCodes = potentialGuessesAndScores[guess][hintsScore] #look-up and pull out potentialCodes
+            potentialGuessesAndScores = generatePotentialGuessesAndScores(allCodes, potentialCodes)
+            guess = generateGuess(potentialGuessesAndScores, potentialCodes) 
             puts "This is round #{count}"
             print "potentialCodes.length is: "
             puts potentialCodes.length
@@ -137,36 +135,33 @@ def generateCodes
     end
     allCodes
 end
-def generatePotentialCodes(potentialCodes, hints, guess)
-    potentialCodes.each do |code|
-       assummedResult = match(code,guess) 
-       acceptCondition = assummedResult.count(1) == hints.count(1) \
-                        && assummedResult.count(0) == hints.count(0)
-        if !acceptCondition
-            potentialCodes.delete(code)
-        end
-    end
-    potentialCodes
-end
-def generateGuess(potentialCodes, allCodes)
-    #binding.pry
-    maxScores = {}
+
+def generatePotentialGuessesAndScores(allCodes, potentialCodes)
+    scoresByGuess = Hash.new() { |hash,key| hash[key] = Hash.new() {|h,k| h[k] = []} }
     allCodes.each do |guess|
-        scores_by_guess = Hash.new(0)
         potentialCodes.each do |potentialCode| #assume each code in potentialCodes is the secret code
                                                 #compare secret code with each guess in allCodes -> score
                                                 #keep track of the number of score for each guess
             assummedResult = match(potentialCode,guess)
             numberOf1 = assummedResult.count(1)
             numberOf0 = assummedResult.count(0) 
-            scores_by_guess[[numberOf1,numberOf0]] += 1
+            scoresByGuess[guess][[numberOf1,numberOf0]].push(potentialCode)
         end 
-        maxScores[guess] = scores_by_guess.values.max #select the highest score of each guess and push it to the array
     end
-    minMax = maxScores.values.min
+    scoresByGuess
+end
+def generateGuess(potentialGuessesAndScores, potentialCodes)
+    #binding.pry
+    
+    maxScoreByGuess = {}
+    potentialGuessesAndScores.each do |guess, setOfscores| 
+            maxScoreByGuess[guess] = setOfscores.values.map(&:length).max #select the highest score of each guess 
+                                                                    #and push it to the array
+    end
+    minMax = maxScoreByGuess.values.min
     finalGuess = nil
-    if maxScores.values.count(minMax) > 1 #check whether there are multiple minmax values
-        minMaxScores = maxScores.select {|code, score| score == minMax}  #if so, pull them out
+    if maxScoreByGuess.values.count(minMax) > 1 #check whether there are multiple minmax values
+        minMaxScores = maxScoreByGuess.select {|code, score| score == minMax}  #if so, pull them out
         guesses = minMaxScores.keys.sort #sort by numerical order
         guesses.each do |guess| #choose the one that in potentialCodes or the first one
             if potentialCodes.include?(guess)
@@ -177,7 +172,7 @@ def generateGuess(potentialCodes, allCodes)
             end
         end
     else  
-        finalGuess = maxScores.key(minMax)
+        finalGuess = maxScoreByGuess.key(minMax)
     end
     finalGuess
 end
