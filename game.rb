@@ -91,10 +91,9 @@ end
 def gameForComputer
     instruct
     code = gets.chomp.split('').map(&:to_i)
-    count = 0 
+    count = 1 
     allCodes = generateCodes #Step1: generate 6**4 codewords
     while count <=10
-        count += 1
         print "My guess is: " 
         if count == 1 
             potentialCodes = allCodes.dup 
@@ -125,6 +124,7 @@ def gameForComputer
             puts potentialCodes.length
             puts potentialCodes.include?(code)
         end
+        count += 1
     end
     
 end
